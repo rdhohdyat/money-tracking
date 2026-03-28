@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Tracking</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968746.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    body {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body x-data="app()" class="bg-gray-50 text-gray-800 pb-24 h-screen overflow-y-auto no-scrollbar">
+
+  <main class="max-w-md mx-auto w-full px-5 pb-20 space-y-6">
+
+    <!-- HOME TAB -->
+    <div x-show="active === 'home'" x-transition.opacity class="pt-8">
+      <!-- Total Uang -->
+      <div class="bg-blue-500 rounded-2xl p-5 text-white relative overflow-hidden mb-4">
+        <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500 rounded-full opacity-50 blur-2xl"></div>
+        <div class="absolute -left-4 -bottom-4 w-24 h-24 bg-blue-900 rounded-full opacity-50 blur-2xl"></div>
+        <div class="relative z-10">
+          <p class="text-white text-sm font-medium mb-1">Total Uang Anda</p>
+          <h2 class="font-bold text-xl tracking-tight" x-text="formatRupiah(totalMoney)"></h2>
+        </div>
+      </div>
+
+      <!-- Saldo Cards -->
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="bg-white rounded-2xl p-4 border border-gray-100 flex flex-col">
+          <div class="flex flex-row items-center justify-between text-gray-500">
+            <span class="text-xs font-semibold">Tunai</span>
+            <div class="w-7 h-7 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center">
+              <iconify-icon icon="solar:wallet-outline" width="16"></iconify-icon>
+            </div>
+          </div>
+          <p class="text-base font-bold text-gray-900 tracking-tight leading-none" x-text="formatRupiah(cash)"></p>
+        </div>
+        <div class="bg-white rounded-2xl p-4 border border-gray-100 flex flex-col">
+          <div class="flex flex-row items-center justify-between text-gray-500">
+            <span class="text-xs font-semibold">Non Tunai</span>
+            <div class="w-7 h-7 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center">
+              <iconify-icon icon="solar:card-outline" width="16"></iconify-icon>
+            </div>
+          </div>
+          <p class="text-base font-bold text-gray-900 tracking-tight leading-none" x-text="formatRupiah(cashless)"></p>
+        </div>
+      </div>
+
+      <!-- Limit Harian -->
+      <div class="bg-white rounded-2xl p-4 border border-gray-100 mb-4">
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center">
+              <iconify-icon icon="solar:pie-chart-2-outline" width="18"></iconify-icon>
+            </div>
+            <h3 class="font-bold text-gray-800">Limit Harian</h3>
+          </div>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full bg-gray-50 text-gray-600 border border-gray-100">
+            <span x-text="formatRupiah(dailyLimit - dailySpent)"></span> sisa
+          </span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5 mb-1 overflow-hidden">
+          <div class="bg-blue-600 h-2.5 rounded-full" :style="`width: ${Math.min((dailySpent/dailyLimit)*100, 100)}%`">
+          </div>
+        </div>
+        <div class="flex justify-between text-xs text-gray-500 mt-2 font-medium">
+          <span x-text="`Terpakai: ${formatRupiah(dailySpent)}`"></span>
+          <span x-text="`Limit: ${formatRupiah(dailyLimit)}`"></span>
+        </div>
+      </div>
+
+      <!-- Riwayat List -->
+      <div class="mb-4 flex justify-between items-center">
+        <h3 class="font-bold text-lg text-gray-900">Riwayat Terakhir</h3>
+        <button @click="showHistoryModal = true"
+          class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
+          <span>Tambah</span>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <template x-for="history in histories" :key="history.id">
+          <div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-white"
+                :class="history.type === 'Pemasukkan' ? 'bg-green-500' : 'bg-red-500'">
+                <iconify-icon
+                  :icon="history.type === 'Pemasukkan' ? 'solar:arrow-left-down-bold' : 'solar:arrow-right-up-bold'"
+                  width="20"></iconify-icon>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-gray-900 leading-tight" x-text="history.name"></p>
+                <div class="flex items-center gap-1 mt-1 text-[11px] text-gray-500 font-medium">
+                  <span x-text="history.source"></span>
+                  <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                  <span x-text="history.date"></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <p class="font-bold text-sm" :class="history.type === 'Pemasukkan' ? 'text-green-600' : 'text-red-500'"
+                x-text="(history.type === 'Pemasukkan' ? '+' : '-') + formatRupiah(history.amount)"></p>
+              <button @click="deleteHistory(history.id)" class="text-gray-400 hover:text-red-500 transition-colors">
+                <iconify-icon icon="solar:trash-bin-trash-bold" width="16"></iconify-icon>
+              </button>
+            </div>
+          </div>
+        </template>
+        <div x-show="histories.length === 0"
+          class="text-center py-6 text-gray-400 text-sm font-medium border border-gray-100 rounded-2xl border-dashed">
+          Belum ada riwayat
+        </div>
+      </div>
+    </div>
+
+    <!-- TABUNGAN TAB -->
+    <div x-show="active === 'savings'" style="display: none;" x-transition.opacity>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-lg text-gray-900">Tabungan</h2>
+        <button @click="showSavingModal = true"
+          class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
+          <span>Tambah</span>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="saving in savings" :key="saving.id">
+          <div class="bg-white rounded-2xl p-5 border border-gray-100">
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center">
+                  <iconify-icon icon="solar:safe-2-bold-duotone" width="24"></iconify-icon>
+                </div>
+                <div>
+                  <h3 class="font-bold text-gray-900" x-text="saving.name"></h3>
+                  <p class="text-xs text-gray-500 font-medium mt-0.5" x-text="`Target: ${formatRupiah(saving.target)}`">
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button @click="deleteSaving(saving.id)" class="text-gray-400 hover:text-red-500 p-2 transition-colors">
+                  <iconify-icon icon="solar:trash-bin-trash-bold" width="18"></iconify-icon>
+                </button>
+                <button @click="fillSaving(saving.id)"
+                  class="bg-white text-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold border border-blue-500 hover:bg-blue-50 transition-colors">
+                  Tabung
+                </button>
+              </div>
+            </div>
+
+            <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden mb-2">
+              <div class="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                :style="`width: ${Math.min((saving.current/saving.target)*100, 100)}%`"></div>
+            </div>
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-blue-600" x-text="formatRupiah(saving.current)"></span>
+              <span class="text-gray-500" x-text="Math.round((saving.current/saving.target)*100) + '%'"></span>
+            </div>
+          </div>
+        </template>
+        <div x-show="savings.length === 0"
+          class="text-center py-10 text-gray-400 text-sm font-medium border border-gray-100 rounded-2xl border-dashed">
+          Belum ada tabungan. Yuk mulai menabung!
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES TAB -->
+    <div x-show="active === 'notes'" style="display: none;" x-transition.opacity>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-lg text-gray-900">Catatan</h2>
+        <button @click="openNoteModal()"
+          class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
+          <span>Tambah Note</span>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="note in notes" :key="note.id">
+          <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm relative group">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-bold text-gray-900 pr-8" x-text="note.title"></h3>
+              <div class="flex gap-1">
+                <button @click="openNoteModal(note)" class="text-gray-400 hover:text-blue-600 p-1">
+                  <iconify-icon icon="solar:pen-bold" width="18"></iconify-icon>
+                </button>
+                <button @click="deleteNote(note.id)" class="text-gray-400 hover:text-red-500 p-1">
+                  <iconify-icon icon="solar:trash-bin-trash-bold" width="18"></iconify-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="space-y-1.5 mt-3">
+              <template x-if="!note.isChecklist">
+                <p class="text-sm text-gray-600 whitespace-pre-line" x-text="note.content"></p>
+              </template>
+
+              <template x-if="note.isChecklist">
+                <div class="space-y-1">
+                  <template x-for="(item, index) in parseChecklist(note.content)" :key="index">
+                    <div class="flex items-center gap-2 py-0.5">
+                      <div @click="toggleChecklistItem(note, index)"
+                        class="w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                        :class="item.checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'">
+                        <iconify-icon x-show="item.checked" icon="solar:check-read-bold" width="10"></iconify-icon>
+                      </div>
+                      <span class="text-sm font-medium transition-all"
+                        :class="item.checked ? 'text-gray-400 line-through' : 'text-gray-700'"
+                        x-text="item.text"></span>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+            <div
+              class="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center text-[10px] text-gray-400 font-medium">
+              <span x-text="note.isChecklist ? 'Checklist Mode' : 'Note Mode'"></span>
+              <span x-text="note.date"></span>
+            </div>
+          </div>
+        </template>
+
+        <div x-show="notes.length === 0"
+          class="text-center py-12 text-gray-400 text-sm font-medium border border-gray-100 rounded-2xl border-dashed">
+          Belum ada catatan
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div x-show="active === 'settings'" style="display: none;" x-transition.opacity>
+      <h2 class="font-bold text-lg text-gray-900 mb-4">Pengaturan</h2>
+
+      <div class="space-y-4">
+        <div class="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
+          <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2 mb-2">
+            <iconify-icon icon="solar:wallet-money-bold-duotone" class="text-blue-500" width="20"></iconify-icon> Saldo
+            Aktif
+          </h3>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Jumlah Tunai</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
+              <input type="number" x-model.number="cash"
+                class="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Jumlah Non Tunai</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
+              <input type="number" x-model.number="cashless"
+                class="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
+          <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2 mb-2">
+            <iconify-icon icon="solar:pie-chart-2-bold-duotone" class="text-blue-500" width="20"></iconify-icon> Limit
+            Pengeluaran
+          </h3>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Batas Harian</label>
+            <div class="relative">
+              <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
+              <input type="number" x-model.number="dailyLimit"
+                class="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+          <button @click="resetDailyLimit"
+            class="w-full bg-gray-50 text-gray-700 font-bold text-sm py-3 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
+            <iconify-icon icon="solar:refresh-circle-bold" width="18"></iconify-icon> Reset Pengeluaran Hari Ini
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Navigation -->
+  <div
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-zinc-900 rounded-full px-3.5 py-2.5 shadow-2xl">
+    <a href="#" @click.prevent="active = 'home'" :class="active === 'home'
+          ? 'bg-white text-zinc-900'
+          : 'text-white/45 hover:text-white/80 hover:bg-white/10'"
+      class="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-150">
+      <iconify-icon :icon="active === 'home' ? 'solar:home-2-bold' : 'solar:home-2-linear'" width="22"></iconify-icon>
+    </a>
+
+    <a href="#" @click.prevent="active = 'savings'" :class="active === 'savings'
+          ? 'bg-white text-zinc-900'
+          : 'text-white/45 hover:text-white/80 hover:bg-white/10'"
+      class="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-150">
+      <iconify-icon :icon="active === 'savings' ? 'solar:money-bag-bold' : 'solar:money-bag-linear'"
+        width="22"></iconify-icon>
+    </a>
+
+    <a href="#" @click.prevent="active = 'notes'" :class="active === 'notes'
+          ? 'bg-white text-zinc-900'
+          : 'text-white/45 hover:text-white/80 hover:bg-white/10'"
+      class="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-150">
+      <iconify-icon :icon="active === 'notes' ? 'solar:clipboard-list-bold' : 'solar:clipboard-list-linear'"
+        width="22"></iconify-icon>
+    </a>
+
+    <a href="#" @click.prevent="active = 'settings'" :class="active === 'settings'
+          ? 'bg-white text-zinc-900'
+          : 'text-white/45 hover:text-white/80 hover:bg-white/10'"
+      class="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-150">
+      <iconify-icon :icon="active === 'settings' ? 'solar:settings-bold' : 'solar:settings-linear'"
+        width="22"></iconify-icon>
+    </a>
+  </div>
+
+  <!-- History Modal -->
+  <div x-show="showHistoryModal" style="display: none;"
+    class="fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div x-show="showHistoryModal" x-transition.opacity class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+      @click="showHistoryModal = false"></div>
+    <div x-show="showHistoryModal" x-transition.scale
+      class="relative bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-xl overflow-y-auto max-h-[90vh]">
+      <h3 class="font-bold text-xl text-gray-900 mb-5">Tambah Riwayat</h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Jenis</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" x-model="formType" value="Pengeluaran" class="peer sr-only">
+              <div
+                class="text-center py-2.5 rounded-xl border border-gray-100 text-sm font-bold text-gray-500 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition-colors">
+                Pengeluaran</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" x-model="formType" value="Pemasukkan" class="peer sr-only">
+              <div
+                class="text-center py-2.5 rounded-xl border border-gray-100 text-sm font-bold text-gray-500 peer-checked:bg-green-50 peer-checked:text-green-600 peer-checked:border-green-200 transition-colors">
+                Pemasukkan</div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Sumber</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" x-model="formSource" value="Tunai" class="peer sr-only">
+              <div
+                class="text-center py-2.5 rounded-xl border border-gray-100 text-sm font-bold text-gray-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 peer-checked:border-blue-200 transition-colors">
+                Tunai</div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" x-model="formSource" value="Non Tunai" class="peer sr-only">
+              <div
+                class="text-center py-2.5 rounded-xl border border-gray-100 text-sm font-bold text-gray-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 peer-checked:border-blue-200 transition-colors">
+                Non Tunai</div>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Nama Riwayat</label>
+          <input type="text" x-model="formName" placeholder="Contoh: Makan Siang"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Nominal</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
+            <input type="number" x-model.number="formAmount" placeholder="0"
+              class="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button @click="showHistoryModal = false"
+            class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
+          <button @click="saveHistory"
+            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saving Modal -->
+  <div x-show="showSavingModal" style="display: none;"
+    class="fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div x-show="showSavingModal" x-transition.opacity class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+      @click="showSavingModal = false"></div>
+    <div x-show="showSavingModal" x-transition.scale
+      class="relative bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-xl overflow-y-auto max-h-[90vh]">
+      <h3 class="font-bold text-xl text-gray-900 mb-5">Tambah Tabungan</h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Nama Tabungan</label>
+          <input type="text" x-model="savingFormName" placeholder="Contoh: Beli Laptop Baru"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Target Nominal</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
+            <input type="number" x-model.number="savingFormTarget" placeholder="0"
+              class="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button @click="showSavingModal = false"
+            class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
+          <button @click="saveSaving"
+            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Note Modal -->
+  <div x-show="showNoteModal" style="display: none;" class="fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div x-show="showNoteModal" x-transition.opacity class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+      @click="showNoteModal = false"></div>
+    <div x-show="showNoteModal" x-transition.scale
+      class="relative bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-xl overflow-y-auto max-h-[90vh]">
+      <h3 class="font-bold text-xl text-gray-900 mb-5" x-text="noteEditId ? 'Edit Catatan' : 'Tambah Catatan'"></h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Judul</label>
+          <input type="text" x-model="noteFormTitle" placeholder="Misal: Belanja Bulanan"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Isi Catatan</label>
+          <textarea x-model="noteFormContent"
+            placeholder="Tulis catatan Anda...&#10;Gunakan '-' di awal baris untuk otomatis jadi checklist"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 min-h-[150px] resize-none"></textarea>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button @click="showNoteModal = false"
+            class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
+          <button @click="saveNote"
+            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function app() {
+      return {
+        active: 'home',
+
+        // Data states with default values
+        cash: 0,
+        cashless: 0,
+        dailyLimit: 0,
+        dailySpent: 0,
+        histories: [],
+        savings: [],
+        notes: [],
+
+        init() {
+          // Load data from localStorage on startup
+          const savedData = localStorage.getItem('money_tracker_data');
+          if (savedData) {
+            const data = JSON.parse(savedData);
+            this.cash = data.cash ?? 0;
+            this.cashless = data.cashless ?? 0;
+            this.dailyLimit = data.dailyLimit ?? 0;
+            this.dailySpent = data.dailySpent ?? 0;
+            this.histories = data.histories ?? [];
+            this.savings = data.savings ?? [];
+            this.notes = data.notes ?? [];
+          }
+
+          // Watch for any changes and save to localStorage
+          this.$watch('cash', () => this.saveToLocal());
+          this.$watch('cashless', () => this.saveToLocal());
+          this.$watch('dailyLimit', () => this.saveToLocal());
+          this.$watch('dailySpent', () => this.saveToLocal());
+          this.$watch('histories', () => this.saveToLocal());
+          this.$watch('savings', () => this.saveToLocal());
+          this.$watch('notes', () => this.saveToLocal());
+        },
+
+        saveToLocal() {
+          const dataToSave = {
+            cash: this.cash,
+            cashless: this.cashless,
+            dailyLimit: this.dailyLimit,
+            dailySpent: this.dailySpent,
+            histories: this.histories,
+            savings: this.savings,
+            notes: this.notes
+          };
+          localStorage.setItem('money_tracker_data', JSON.stringify(dataToSave));
+        },
+
+        get totalMoney() { return this.cash + this.cashless; },
+
+        // Modal states
+        showHistoryModal: false,
+        showSavingModal: false,
+
+        // History Form
+        formType: 'Pengeluaran',
+        formSource: 'Tunai',
+        formAmount: '',
+        formName: '',
+
+        histories: [
+          { id: 1, name: 'Makan Siang', amount: 45000, type: 'Pengeluaran', source: 'Tunai', date: 'Hari ini' }
+        ],
+
+        // Savings
+        savings: [
+          { id: 1, name: 'Beli HP', target: 5000000, current: 1500000 }
+        ],
+        savingFormName: '',
+        savingFormTarget: '',
+
+        // Notes
+        showNoteModal: false,
+        noteFormTitle: '',
+        noteFormContent: '',
+        noteFormIsChecklist: false,
+        noteEditId: null,
+        notes: [],
+
+        openNoteModal(note = null) {
+          if (note) {
+            this.noteEditId = note.id;
+            this.noteFormTitle = note.title;
+            this.noteFormContent = note.content;
+            this.noteFormIsChecklist = note.isChecklist;
+          } else {
+            this.noteEditId = null;
+            this.noteFormTitle = '';
+            this.noteFormContent = '';
+            this.noteFormIsChecklist = false;
+          }
+          this.showNoteModal = true;
+        },
+
+        saveNote() {
+          if (!this.noteFormTitle) return;
+
+          const now = new Date();
+          const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+          // Auto-detect checklist mode if any line starts with '-'
+          const lines = this.noteFormContent.split('\n');
+          const hasListPattern = lines.some(line => line.trim().startsWith('- '));
+          const isChecklist = hasListPattern;
+
+          if (this.noteEditId) {
+            const index = this.notes.findIndex(n => n.id === this.noteEditId);
+            if (index !== -1) {
+              this.notes[index] = {
+                ...this.notes[index],
+                title: this.noteFormTitle,
+                content: this.noteFormContent,
+                isChecklist: isChecklist,
+                date: dateStr
+              };
+            }
+          } else {
+            this.notes.unshift({
+              id: Date.now(),
+              title: this.noteFormTitle,
+              content: this.noteFormContent,
+              isChecklist: isChecklist,
+              date: dateStr
+            });
+          }
+          this.showNoteModal = false;
+          this.saveToLocal();
+        },
+
+        deleteNote(id) {
+          if (confirm('Hapus catatan ini?')) {
+            this.notes = this.notes.filter(n => n.id !== id);
+            this.saveToLocal();
+          }
+        },
+
+        parseChecklist(content) {
+          return content.split('\n').filter(line => line.trim() !== '').map(line => {
+            let text = line.trim();
+            let checked = false;
+            if (text.startsWith('[x] ')) {
+              checked = true;
+              text = text.substring(4);
+            } else if (text.startsWith('[ ] ')) {
+              text = text.substring(4);
+            } else if (text.startsWith('- ')) {
+              text = text.substring(2);
+            }
+            return { text, checked };
+          });
+        },
+
+        toggleChecklistItem(note, itemIndex) {
+          let lines = note.content.split('\n').filter(line => line.trim() !== '');
+          let line = lines[itemIndex];
+
+          if (line.startsWith('[x] ')) {
+            lines[itemIndex] = '[ ] ' + line.substring(4);
+          } else if (line.startsWith('[ ] ')) {
+            lines[itemIndex] = '[x] ' + line.substring(4);
+          } else if (line.startsWith('- ')) {
+            lines[itemIndex] = '[x] ' + line.substring(2);
+          } else {
+            lines[itemIndex] = '[x] ' + line;
+          }
+
+          note.content = lines.join('\n');
+          this.saveToLocal();
+        },
+
+        saveHistory() {
+          if (!this.formAmount || !this.formName) return;
+          const amt = parseInt(this.formAmount);
+
+          this.histories.unshift({
+            id: Date.now(),
+            name: this.formName,
+            amount: amt,
+            type: this.formType,
+            source: this.formSource,
+            date: 'Baru saja'
+          });
+
+          if (this.formType === 'Pengeluaran') {
+            if (this.formSource === 'Tunai') this.cash -= amt;
+            else this.cashless -= amt;
+            this.dailySpent += amt;
+          } else {
+            if (this.formSource === 'Tunai') this.cash += amt;
+            else this.cashless += amt;
+          }
+
+          this.showHistoryModal = false;
+          this.formAmount = '';
+          this.formName = '';
+        },
+
+        deleteHistory(id) {
+          const item = this.histories.find(h => h.id === id);
+          if (item) {
+            if (item.type === 'Pengeluaran') {
+              if (item.source === 'Tunai') this.cash += item.amount;
+              else this.cashless += item.amount;
+              this.dailySpent = Math.max(0, this.dailySpent - item.amount);
+            } else {
+              if (item.source === 'Tunai') this.cash -= item.amount;
+              else this.cashless -= item.amount;
+            }
+          }
+          this.histories = this.histories.filter(h => h.id !== id);
+        },
+
+        saveSaving() {
+          if (!this.savingFormName || !this.savingFormTarget) return;
+          this.savings.push({
+            id: Date.now(),
+            name: this.savingFormName,
+            target: parseInt(this.savingFormTarget),
+            current: 0
+          });
+          this.showSavingModal = false;
+          this.savingFormName = '';
+          this.savingFormTarget = '';
+        },
+
+        fillSaving(id) {
+          const amtStr = prompt("Masukkan jumlah uang untuk ditabung:");
+          if (amtStr && !isNaN(amtStr)) {
+            const amt = parseInt(amtStr);
+            const saving = this.savings.find(s => s.id === id);
+            if (saving) saving.current += amt;
+          }
+        },
+
+        resetDailyLimit() {
+          if (confirm('Apakah Anda yakin ingin reset pengeluaran harian?')) {
+            this.dailySpent = 0;
+          }
+        },
+
+        deleteSaving(id) {
+          if (confirm('Hapus tabungan ini?')) {
+            this.savings = this.savings.filter(s => s.id !== id);
+            this.saveToLocal();
+          }
+        },
+
+        formatRupiah(num) {
+          return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>
