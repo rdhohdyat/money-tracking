@@ -67,6 +67,17 @@
             <iconify-icon icon="solar:refresh-circle-bold" width="18"></iconify-icon> Reset Pengeluaran Hari Ini
           </button>
         </div>
+
+        <div class="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
+          <h3 class="font-bold text-gray-800 text-sm flex items-center gap-2 mb-2">
+            <iconify-icon icon="solar:document-text-bold-duotone" class="text-blue-500" width="20"></iconify-icon> Data Aplikasi
+          </h3>
+          <p class="text-xs text-gray-500 font-medium">Export seluruh riwayat transaksi Anda ke dalam format file Excel (.csv).</p>
+          <button @click="exportToCSV"
+            class="w-full bg-green-50 text-green-700 font-bold text-sm py-3 rounded-xl border border-green-100 hover:bg-green-100 transition-colors flex items-center justify-center gap-2">
+            <iconify-icon icon="solar:download-square-bold" width="18"></iconify-icon> Export Riwayat (CSV)
+          </button>
+        </div>
       </div>
     </div>
   </main>

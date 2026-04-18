@@ -81,6 +81,7 @@ function app() {
     formSource: 'Tunai',
     formAmount: '',
     formName: '',
+    formDate: '',
 
     openHistoryModal(history = null) {
       if (history) {
@@ -89,20 +90,24 @@ function app() {
         this.formSource = history.source;
         this.formAmount = history.amount;
         this.formName = history.name;
+        this.formDate = history.rawDate || new Date().toISOString().split('T')[0];
       } else {
         this.historyEditId = null;
         this.formType = 'Pengeluaran';
         this.formSource = 'Tunai';
         this.formAmount = '';
         this.formName = '';
+        this.formDate = new Date().toISOString().split('T')[0];
       }
       this.showHistoryModal = true;
     },
 
     saveHistory() {
-      if (!this.formAmount || !this.formName) return;
+      if (!this.formAmount || !this.formName || !this.formDate) return;
       const amt = parseInt(this.formAmount);
-      const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      
+      const d = new Date(this.formDate);
+      const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
       if (this.historyEditId) {
         const index = this.histories.findIndex(h => h.id === this.historyEditId);
@@ -131,7 +136,9 @@ function app() {
             name: this.formName,
             amount: amt,
             type: this.formType,
-            source: this.formSource
+            source: this.formSource,
+            date: dateStr,
+            rawDate: this.formDate
           };
         }
       } else {
@@ -141,7 +148,8 @@ function app() {
           amount: amt,
           type: this.formType,
           source: this.formSource,
-          date: dateStr
+          date: dateStr,
+          rawDate: this.formDate
         });
 
         if (this.formType === 'Pengeluaran') {
