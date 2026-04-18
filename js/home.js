@@ -1,11 +1,11 @@
 function app() {
-  return {
-    ...coreApp(),
+  const core = coreApp();
+  const homeLogic = {
     chart: null,
 
     pageInit() {
       // Tunggu sebentar agar Alpine selesai mounting dan canvas tersedia
-      setTimeout(() => this.updateChart(), 100);
+      setTimeout(() => this.updateChart(), 200);
     },
 
     updateChart() {
@@ -105,11 +105,9 @@ function app() {
       const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
       if (this.historyEditId) {
-        // Find old and revert its impact
         const index = this.histories.findIndex(h => h.id === this.historyEditId);
         if (index !== -1) {
           const old = this.histories[index];
-          // Revert old impact
           if (old.type === 'Pengeluaran') {
             if (old.source === 'Tunai') this.cash += old.amount;
             else this.cashless += old.amount;
@@ -119,7 +117,6 @@ function app() {
             else this.cashless -= old.amount;
           }
 
-          // Apply new impact
           if (this.formType === 'Pengeluaran') {
             if (this.formSource === 'Tunai') this.cash -= amt;
             else this.cashless -= amt;
@@ -129,18 +126,15 @@ function app() {
             else this.cashless += amt;
           }
 
-          // Update history item
           this.histories[index] = {
             ...old,
             name: this.formName,
             amount: amt,
             type: this.formType,
             source: this.formSource
-            // We keep the original date of creation for "edit"
           };
         }
       } else {
-        // Create new
         this.histories.unshift({
           id: Date.now(),
           name: this.formName,
@@ -150,7 +144,6 @@ function app() {
           date: dateStr
         });
 
-        // Apply impact
         if (this.formType === 'Pengeluaran') {
           if (this.formSource === 'Tunai') this.cash -= amt;
           else this.cashless -= amt;
@@ -184,5 +177,7 @@ function app() {
       this.updateChart();
       this.saveToLocal();
     }
-  }
+  };
+
+  return Object.assign(core, homeLogic);
 }
