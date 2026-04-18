@@ -50,7 +50,7 @@ function coreApp() {
       localStorage.setItem('money_tracker_data', JSON.stringify(dataToSave));
     },
 
-    get totalMoney() { return this.cash + this.cashless; },
+    totalMoney() { return this.cash + this.cashless; },
 
     formatRupiah(num) {
       return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
