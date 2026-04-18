@@ -1,9 +1,80 @@
 function app() {
   return {
     ...coreApp(),
+    chart: null,
+
+    pageInit() {
+      // Tunggu sebentar agar Alpine selesai mounting dan canvas tersedia
+      setTimeout(() => this.updateChart(), 100);
+    },
+
+    updateChart() {
+      const ctx = document.getElementById('historyChart');
+      if (!ctx) return;
+
+      // Ambil data 7 hari terakhir (unik)
+      const dataByDate = {};
+      this.histories.forEach(h => {
+        if (!dataByDate[h.date]) {
+          dataByDate[h.date] = { income: 0, expense: 0 };
+        }
+        if (h.type === 'Pemasukkan') dataByDate[h.date].income += h.amount;
+        else dataByDate[h.date].expense += h.amount;
+      });
+
+      // Sortir tanggal (asumsi format 'DD MMM')
+      const sortedDates = Object.keys(dataByDate).slice(0, 7).reverse();
+
+      const chartData = {
+        labels: sortedDates,
+        datasets: [
+          {
+            label: 'Pemasukkan',
+            data: sortedDates.map(d => dataByDate[d].income),
+            borderColor: '#10b981', // green-500
+            backgroundColor: '#10b98120',
+            tension: 0.4,
+            fill: true
+          },
+          {
+            label: 'Pengeluaran',
+            data: sortedDates.map(d => dataByDate[d].expense),
+            borderColor: '#ef4444', // red-500
+            backgroundColor: '#ef444420',
+            tension: 0.4,
+            fill: true
+          }
+        ]
+      };
+
+      if (this.chart) {
+        this.chart.data = chartData;
+        this.chart.update();
+      } else {
+        this.chart = new Chart(ctx, {
+          type: 'line',
+          data: chartData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              y: { display: false },
+              x: {
+                grid: { display: false },
+                ticks: { font: { size: 10 } }
+              }
+            }
+          }
+        });
+      }
+    },
 
     // Modal states
     showHistoryModal: false,
+    historyEditId: null,
 
     // History Form
     formType: 'Pengeluaran',
@@ -11,35 +82,92 @@ function app() {
     formAmount: '',
     formName: '',
 
+    openHistoryModal(history = null) {
+      if (history) {
+        this.historyEditId = history.id;
+        this.formType = history.type;
+        this.formSource = history.source;
+        this.formAmount = history.amount;
+        this.formName = history.name;
+      } else {
+        this.historyEditId = null;
+        this.formType = 'Pengeluaran';
+        this.formSource = 'Tunai';
+        this.formAmount = '';
+        this.formName = '';
+      }
+      this.showHistoryModal = true;
+    },
+
     saveHistory() {
       if (!this.formAmount || !this.formName) return;
       const amt = parseInt(this.formAmount);
+      const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
-      this.histories.unshift({
-        id: Date.now(),
-        name: this.formName,
-        amount: amt,
-        type: this.formType,
-        source: this.formSource,
-        date: 'Baru saja'
-      });
+      if (this.historyEditId) {
+        // Find old and revert its impact
+        const index = this.histories.findIndex(h => h.id === this.historyEditId);
+        if (index !== -1) {
+          const old = this.histories[index];
+          // Revert old impact
+          if (old.type === 'Pengeluaran') {
+            if (old.source === 'Tunai') this.cash += old.amount;
+            else this.cashless += old.amount;
+            this.dailySpent = Math.max(0, this.dailySpent - old.amount);
+          } else {
+            if (old.source === 'Tunai') this.cash -= old.amount;
+            else this.cashless -= old.amount;
+          }
 
-      if (this.formType === 'Pengeluaran') {
-        if (this.formSource === 'Tunai') this.cash -= amt;
-        else this.cashless -= amt;
-        this.dailySpent += amt;
+          // Apply new impact
+          if (this.formType === 'Pengeluaran') {
+            if (this.formSource === 'Tunai') this.cash -= amt;
+            else this.cashless -= amt;
+            this.dailySpent += amt;
+          } else {
+            if (this.formSource === 'Tunai') this.cash += amt;
+            else this.cashless += amt;
+          }
+
+          // Update history item
+          this.histories[index] = {
+            ...old,
+            name: this.formName,
+            amount: amt,
+            type: this.formType,
+            source: this.formSource
+            // We keep the original date of creation for "edit"
+          };
+        }
       } else {
-        if (this.formSource === 'Tunai') this.cash += amt;
-        else this.cashless += amt;
+        // Create new
+        this.histories.unshift({
+          id: Date.now(),
+          name: this.formName,
+          amount: amt,
+          type: this.formType,
+          source: this.formSource,
+          date: dateStr
+        });
+
+        // Apply impact
+        if (this.formType === 'Pengeluaran') {
+          if (this.formSource === 'Tunai') this.cash -= amt;
+          else this.cashless -= amt;
+          this.dailySpent += amt;
+        } else {
+          if (this.formSource === 'Tunai') this.cash += amt;
+          else this.cashless += amt;
+        }
       }
 
       this.showHistoryModal = false;
-      this.formAmount = '';
-      this.formName = '';
+      this.updateChart();
       this.saveToLocal();
     },
 
     deleteHistory(id) {
+      if (!confirm('Hapus riwayat ini?')) return;
       const item = this.histories.find(h => h.id === id);
       if (item) {
         if (item.type === 'Pengeluaran') {
@@ -52,6 +180,8 @@ function app() {
         }
       }
       this.histories = this.histories.filter(h => h.id !== id);
+      this.showHistoryModal = false;
+      this.updateChart();
       this.saveToLocal();
     }
   }

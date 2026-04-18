@@ -15,6 +15,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -77,11 +78,17 @@
           <span x-text="`Limit: ${formatRupiah(dailyLimit)}`"></span>
         </div>
       </div>
-
+      <!-- Chart Section -->
+      <div class="bg-white rounded-2xl p-4 border border-gray-100 mb-4 h-64 flex flex-col">
+        <h3 class="font-bold text-gray-800 text-sm mb-3">Statistik 7 Hari Terakhir</h3>
+        <div class="flex-1 min-h-0">
+          <canvas id="historyChart"></canvas>
+        </div>
+      </div>
       <!-- Riwayat List -->
       <div class="mb-4 flex justify-between items-center">
         <h3 class="font-bold text-lg text-gray-900">Riwayat Terakhir</h3>
-        <button @click="showHistoryModal = true"
+        <button @click="openHistoryModal()"
           class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
           <span>Tambah</span>
         </button>
@@ -89,7 +96,8 @@
 
       <div class="space-y-3">
         <template x-for="history in histories" :key="history.id">
-          <div class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
+          <div @click="openHistoryModal(history)"
+            class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-full flex items-center justify-center text-white"
                 :class="history.type === 'Pemasukkan' ? 'bg-green-500' : 'bg-red-500'">
@@ -109,9 +117,6 @@
             <div class="flex flex-col items-end gap-1">
               <p class="font-bold text-sm" :class="history.type === 'Pemasukkan' ? 'text-green-600' : 'text-red-500'"
                 x-text="(history.type === 'Pemasukkan' ? '+' : '-') + formatRupiah(history.amount)"></p>
-              <button @click="deleteHistory(history.id)" class="text-gray-400 hover:text-red-500 transition-colors">
-                <iconify-icon icon="solar:trash-bin-trash-bold" width="16"></iconify-icon>
-              </button>
             </div>
           </div>
         </template>
@@ -154,7 +159,7 @@
       @click="showHistoryModal = false"></div>
     <div x-show="showHistoryModal" x-transition.scale
       class="relative bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-xl overflow-y-auto max-h-[90vh]">
-      <h3 class="font-bold text-xl text-gray-900 mb-5">Tambah Riwayat</h3>
+      <h3 class="font-bold text-xl text-gray-900 mb-5" x-text="historyEditId ? 'Edit Riwayat' : 'Tambah Riwayat'"></h3>
 
       <div class="space-y-4">
         <div>
@@ -208,11 +213,16 @@
           </div>
         </div>
 
-        <div class="pt-2 flex gap-3">
-          <button @click="showHistoryModal = false"
-            class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
-          <button @click="saveHistory"
-            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+        <div class="pt-2 flex flex-col gap-2">
+          <div class="flex gap-3">
+            <button @click="showHistoryModal = false"
+              class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
+            <button @click="saveHistory"
+              class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+          </div>
+          <button x-show="historyEditId" @click="deleteHistory(historyEditId)"
+            class="w-full py-3 rounded-xl font-bold text-sm text-red-500 hover:bg-red-50 transition-colors">Hapus
+            Riwayat</button>
         </div>
       </div>
     </div>
