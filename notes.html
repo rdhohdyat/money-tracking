@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Tracking - Notes</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968746.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body x-data="app()" class="bg-gray-50 text-gray-800 pb-24 h-screen overflow-y-auto no-scrollbar">
+
+  <main class="max-w-md mx-auto w-full px-5 pb-20 space-y-6">
+    <!-- NOTES TAB -->
+    <div class="pt-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-lg text-gray-900">Catatan</h2>
+        <button @click="openNoteModal()"
+          class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
+          <span>Tambah Note</span>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="note in notes" :key="note.id">
+          <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm relative group">
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="font-bold text-gray-900 pr-8" x-text="note.title"></h3>
+              <div class="flex gap-1">
+                <button @click="openNoteModal(note)" class="text-gray-400 hover:text-blue-600 p-1">
+                  <iconify-icon icon="solar:pen-bold" width="18"></iconify-icon>
+                </button>
+                <button @click="deleteNote(note.id)" class="text-gray-400 hover:text-red-500 p-1">
+                  <iconify-icon icon="solar:trash-bin-trash-bold" width="18"></iconify-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="space-y-1.5 mt-3">
+              <template x-if="!note.isChecklist">
+                <p class="text-sm text-gray-600 whitespace-pre-line" x-text="note.content"></p>
+              </template>
+
+              <template x-if="note.isChecklist">
+                <div class="space-y-1">
+                  <template x-for="(item, index) in parseChecklist(note.content)" :key="index">
+                    <div class="flex items-center gap-2 py-0.5">
+                      <div @click="toggleChecklistItem(note, index)"
+                        class="w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                        :class="item.checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'">
+                        <iconify-icon x-show="item.checked" icon="solar:check-read-bold" width="10"></iconify-icon>
+                      </div>
+                      <span class="text-sm font-medium transition-all"
+                        :class="item.checked ? 'text-gray-400 line-through' : 'text-gray-700'" x-text="item.text"></span>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+            <div
+              class="mt-4 pt-3 border-t border-gray-50 flex justify-between items-center text-[10px] text-gray-400 font-medium">
+              <span x-text="note.isChecklist ? 'Checklist Mode' : 'Note Mode'"></span>
+              <span x-text="note.date"></span>
+            </div>
+          </div>
+        </template>
+
+        <div x-show="notes.length === 0"
+          class="text-center py-12 text-gray-400 text-sm font-medium border border-gray-100 rounded-2xl border-dashed">
+          Belum ada catatan
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Navigation -->
+  <div
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-zinc-900 rounded-full px-3.5 py-2.5 shadow-2xl">
+    <a href="index.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full text-white/45 hover:text-white/80 hover:bg-white/10 transition-all duration-150">
+      <iconify-icon icon="solar:home-2-linear" width="22"></iconify-icon>
+    </a>
+
+    <a href="savings.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full text-white/45 hover:text-white/80 hover:bg-white/10 transition-all duration-150">
+      <iconify-icon icon="solar:money-bag-linear" width="22"></iconify-icon>
+    </a>
+
+    <a href="notes.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-900 transition-all duration-150">
+      <iconify-icon icon="solar:clipboard-list-bold" width="22"></iconify-icon>
+    </a>
+
+    <a href="settings.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full text-white/45 hover:text-white/80 hover:bg-white/10 transition-all duration-150">
+      <iconify-icon icon="solar:settings-linear" width="22"></iconify-icon>
+    </a>
+  </div>
+
+  <!-- Note Modal -->
+  <div x-show="showNoteModal" style="display: none;" class="fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div x-show="showNoteModal" x-transition.opacity class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+      @click="showNoteModal = false"></div>
+    <div x-show="showNoteModal" x-transition.scale
+      class="relative bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-xl overflow-y-auto max-h-[90vh]">
+      <h3 class="font-bold text-xl text-gray-900 mb-5" x-text="noteEditId ? 'Edit Catatan' : 'Tambah Catatan'"></h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Judul</label>
+          <input type="text" x-model="noteFormTitle" placeholder="Misal: Belanja Bulanan"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Isi Catatan</label>
+          <textarea x-model="noteFormContent"
+            placeholder="Tulis catatan Anda...&#10;Gunakan '-' di awal baris untuk otomatis jadi checklist"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 min-h-[150px] resize-none"></textarea>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button @click="showNoteModal = false"
+            class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
+          <button @click="saveNote"
+            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/notes.js"></script>
+</body>
+
+</html>

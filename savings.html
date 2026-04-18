@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Money Tracking - Savings</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5968/5968746.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body x-data="app()" class="bg-gray-50 text-gray-800 pb-24 h-screen overflow-y-auto no-scrollbar">
+
+  <main class="max-w-md mx-auto w-full px-5 pb-20 space-y-6">
+    <!-- TABUNGAN TAB -->
+    <div class="pt-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-bold text-lg text-gray-900">Tabungan</h2>
+        <button @click="showSavingModal = true"
+          class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center gap-1">
+          <span>Tambah</span>
+        </button>
+      </div>
+
+      <div class="space-y-4">
+        <template x-for="saving in savings" :key="saving.id">
+          <div class="bg-white rounded-2xl p-5 border border-gray-100">
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center">
+                  <iconify-icon icon="solar:safe-2-bold-duotone" width="24"></iconify-icon>
+                </div>
+                <div>
+                  <h3 class="font-bold text-gray-900" x-text="saving.name"></h3>
+                  <p class="text-xs text-gray-500 font-medium mt-0.5" x-text="`Target: ${formatRupiah(saving.target)}`">
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button @click="deleteSaving(saving.id)" class="text-gray-400 hover:text-red-500 p-2 transition-colors">
+                  <iconify-icon icon="solar:trash-bin-trash-bold" width="18"></iconify-icon>
+                </button>
+                <button @click="fillSaving(saving.id)"
+                  class="bg-white text-blue-600 px-3 py-1.5 rounded-xl text-xs font-bold border border-blue-500 hover:bg-blue-50 transition-colors">
+                  Tabung
+                </button>
+              </div>
+            </div>
+
+            <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden mb-2">
+              <div class="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                :style="`width: ${Math.min((saving.current/saving.target)*100, 100)}%`"></div>
+            </div>
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-blue-600" x-text="formatRupiah(saving.current)"></span>
+              <span class="text-gray-500" x-text="Math.round((saving.current/saving.target)*100) + '%'"></span>
+            </div>
+          </div>
+        </template>
+        <div x-show="savings.length === 0"
+          class="text-center py-10 text-gray-400 text-sm font-medium border border-gray-100 rounded-2xl border-dashed">
+          Belum ada tabungan. Yuk mulai menabung!
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Navigation -->
+  <div
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-zinc-900 rounded-full px-3.5 py-2.5 shadow-2xl">
+    <a href="index.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full text-white/45 hover:text-white/80 hover:bg-white/10 transition-all duration-150">
+      <iconify-icon icon="solar:home-2-linear" width="22"></iconify-icon>
+    </a>
+
+    <a href="savings.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full bg-white text-zinc-900 transition-all duration-150">
+      <iconify-icon icon="solar:money-bag-bold" width="22"></iconify-icon>
+    </a>
+
+    <a href="notes.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full text-white/45 hover:text-white/80 hover:bg-white/10 transition-all duration-150">
+      <iconify-icon icon="solar:clipboard-list-linear" width="22"></iconify-icon>
+    </a>
+
+    <a href="settings.html"
+      class="flex items-center justify-center w-11 h-11 rounded-full text-white/45 hover:text-white/80 hover:bg-white/10 transition-all duration-150">
+      <iconify-icon icon="solar:settings-linear" width="22"></iconify-icon>
+    </a>
+  </div>
+
+  <!-- Saving Modal -->
+  <div x-show="showSavingModal" style="display: none;"
+    class="fixed inset-0 z-[60] flex items-center justify-center px-4">
+    <div x-show="showSavingModal" x-transition.opacity class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+      @click="showSavingModal = false"></div>
+    <div x-show="showSavingModal" x-transition.scale
+      class="relative bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-xl overflow-y-auto max-h-[90vh]">
+      <h3 class="font-bold text-xl text-gray-900 mb-5">Tambah Tabungan</h3>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Nama Tabungan</label>
+          <input type="text" x-model="savingFormName" placeholder="Contoh: Beli Laptop Baru"
+            class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-2">Target Nominal</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">Rp</span>
+            <input type="number" x-model.number="savingFormTarget" placeholder="0"
+              class="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button @click="showSavingModal = false"
+            class="w-full py-3 rounded-xl font-bold text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors">Batal</button>
+          <button @click="saveSaving"
+            class="w-full py-3 rounded-xl font-bold text-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors">Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script src="js/savings.js"></script>
+</body>
+
+</html>
