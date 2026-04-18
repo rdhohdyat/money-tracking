@@ -10,7 +10,7 @@ function app() {
 
     updateChart() {
       const ctx = document.getElementById('historyChart');
-      if (!ctx) return;
+      if (!ctx || typeof Chart === 'undefined') return;
 
       // Ambil data 7 hari terakhir (unik)
       const dataByDate = {};
