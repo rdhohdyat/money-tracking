@@ -99,11 +99,11 @@
           <div @click="openHistoryModal(history)"
             class="bg-white rounded-2xl p-4 border border-gray-100 flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
             <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center text-white"
+              <div class="w-5 h-5 rounded-full flex items-center justify-center text-white"
                 :class="history.type === 'Pemasukkan' ? 'bg-green-500' : 'bg-red-500'">
                 <iconify-icon
                   :icon="history.type === 'Pemasukkan' ? 'solar:arrow-left-down-bold' : 'solar:arrow-right-up-bold'"
-                  width="20"></iconify-icon>
+                  width="14"></iconify-icon>
               </div>
               <div>
                 <p class="font-bold text-sm text-gray-900 leading-tight" x-text="history.name"></p>
